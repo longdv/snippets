@@ -1,0 +1,38 @@
+#!/bin/bash
+sn=MyApp
+
+cd /data/dev/myapp/webapp
+#docker-compose -f docker-compose-ssh.yaml up -d
+
+tmux new-session -s "$sn" -n /data/dev/myapp/webapp -d
+
+tmux split-window -d -t 0 -h
+tmux split-window -d -t 0 -v
+tmux split-window -d -t 2 -v
+tmux split-window -d -t 1 -v
+
+echo "Waiting for docker up...."
+sleep 10
+#tmux send-keys -t 0 "echo 0" enter
+#tmux send-keys -t 1 "echo 1" enter
+#tmux send-keys -t 2 "echo 2" enter
+#tmux send-keys -t 3 "echo 3" enter
+#tmux send-keys -t 4 "echo 4" enter
+
+tmux send-keys -t 4 "docker exec -ti myapp rails s" enter
+tmux send-keys -t 0 "docker exec -ti myapp rails c" enter
+tmux send-keys -t 3 "docker exec -ti myapp bash" enter
+
+tmux send-keys -t 2 "docker exec -ti myapp bash" enter
+tmux send-keys -t 2 "rake resque:scheduler" enter
+
+tmux send-keys -t 1 "docker exec -ti myapp bash" enter
+tmux send-keys -t 1 "QUEUE=* rake resque:work" enter
+
+tmux attach -t "$sn"
+
+# 0:rails s | 4 :rails c
+#           |
+#---------------------------------
+# 3:bash    | 2:resque scheduler
+#           | 1:resque work
