@@ -1,0 +1,41 @@
+#!/bin/bash
+sn=saleshood
+is_closed(){
+    n=$(tmux ls 2> /dev/null | grep "^$sn" | wc -l)
+    [[ $n -eq 0 ]]
+}
+cd /data/dev/saleshood/webapp
+
+echo "is_closed1: $is_closed"
+if is_closed ; then
+  docker-compose -f docker-compose-ssh.yaml up -d
+
+  tmux new-session -s "$sn" -n /data/dev/saleshood/webapp -d
+
+
+  tmux split-window -d -t 0 -h
+  tmux split-window -d -t 0 -v
+  tmux split-window -d -t 2 -v
+
+  echo "Waiting for docker up...."
+  sleep 5
+
+  tmux send-keys -t 3 "docker exec -ti shapp rails s" enter
+  tmux send-keys -t 0 "docker exec -ti shapp rails c" enter
+  tmux send-keys -t 2 "docker exec -ti shapp bash" enter
+  tmux send-keys -t 2 "ps aux" enter
+  # tmux send-keys -t 2 "ultrahook webhooks http://shdev.lvh.me:3000" enter
+  # tmux send-keys -t 2 "lt -p 3000 -s shdevhooks" enter
+  tmux send-keys -t 1 "docker exec -ti shapp bash" enter
+  tmux send-keys -t 1 "rake resque:scheduler &" enter
+  tmux send-keys -t 1 "sleep 1" enter
+  tmux send-keys -t 1 "QUEUE=* rake resque:work &" enter
+  tmux send-keys -t 1 "sleep 1" enter
+  tmux send-keys -t 1 'tailf log/development.log|grep -B 0 -A 3 -e "N+1 Query detected" -e "N+1 Query method call stack"' enter
+fi
+tmux attach -t "$sn"
+
+if is_closed ; then
+  # stop containers if tmux server is killed or stopped unless detach
+  docker-compose stop
+fi
