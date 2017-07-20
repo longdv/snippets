@@ -1,16 +1,16 @@
 #!/bin/bash
-sn="tmux-for-dev"
+sn="tmux-for_my_app:dev"
 is_closed(){
     n=$(tmux ls 2> /dev/null | grep "^$sn" | wc -l)
     [[ $n -eq 0 ]]
 }
-cd /data/dev/myapp/webapp
+cd /data/dev/my_app/webapp
 
 echo "is_closed1: $is_closed"
 if is_closed ; then
   docker-compose -f docker-compose-ssh.yaml up -d
 
-  tmux new-session -s "$sn" -n /data/dev/myapp/webapp -d
+  tmux new-session -s "$sn" -n /data/dev/my_app/webapp -d
 
 
   tmux split-window -d -t 0 -h
@@ -18,17 +18,19 @@ if is_closed ; then
   tmux split-window -d -t 2 -v
 
   echo "Waiting for docker up...."
-  sleep 10
+  sleep 5
 
-  tmux send-keys -t 3 "docker exec -ti myapp rails s" enter
-  tmux send-keys -t 0 "docker exec -ti myapp rails c" enter
-  tmux send-keys -t 2 "docker exec -ti myapp bash" enter
-
-  tmux send-keys -t 1 "docker exec -ti myapp bash" enter
+  tmux send-keys -t 3 "docker exec -ti shapp rm -f /webapp/tmp/pids/server.pid" enter
+  sleep 3
+  tmux send-keys -t 3 "docker exec -ti shapp rails s" enter
+  tmux send-keys -t 0 "docker exec -ti shapp rails c" enter
+  tmux send-keys -t 2 "docker exec -ti shapp bash" enter
+  tmux send-keys -t 2 "ps aux" enter
+  tmux send-keys -t 1 "docker exec -ti shapp bash" enter
   tmux send-keys -t 1 "rake resque:scheduler &" enter
-  tmux send-keys -t 1 "sleep 2" enter
+  sleep 1
   tmux send-keys -t 1 "QUEUE=* rake resque:work &" enter
-  tmux send-keys -t 1 "sleep 2" enter
+  tmux send-keys -t 1 "sleep 1" enter
   tmux send-keys -t 1 'tailf log/development.log|grep -B 0 -A 3 -e "N+1 Query detected" -e "N+1 Query method call stack"' enter
 fi
 tmux attach -t "$sn"
